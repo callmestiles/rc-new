@@ -13,6 +13,8 @@ qt_add_resources(resources resources.qrc)
 qt_add_executable(appRC_GUI_NEW
     PathfindingEngine.h
     PathfindingEngine.cpp
+    CarController.h
+    CarController.cpp
     main.cpp
     ${resources}
 )

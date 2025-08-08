@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import PathfindingEngine
+import CarController
 
 Window {
     visible: true
@@ -25,6 +26,22 @@ Window {
             Page {
                 objectName: "controlPage" // Add objectName for identification
 
+                // Car Controller instance
+                CarController {
+                    id: carController
+                    serverUrl: "http://192.168.4.1/control"
+                    speedDeadZone: 15
+                    turnDeadZone: 5
+
+                    onCommandSent: {
+                        console.log("Command sent:", command)
+                    }
+
+                    onNetworkError: {
+                        console.log("Network error:", error)
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 10
@@ -36,6 +53,23 @@ Window {
                             id: title
                             text: "Control Center"
                             font.pointSize: 20
+                        }
+
+                        // Connection status indicator
+                        Rectangle {
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: carController.isConnected ? "green" : "red"
+
+                            Text {
+                                anchors.left: parent.right
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: carController.isConnected ? "Connected" : "Disconnected"
+                                color: carController.isConnected ? "green" : "red"
+                                font.pointSize: 12
+                            }
                         }
                     }
 
@@ -99,25 +133,6 @@ Window {
                                         cursorShape: Qt.PointingHandCursor
                                     }
                                 }
-
-                                //CAMERA VIEW
-                                Rectangle {
-                                    color: "darkgrey"
-                                    width: 600
-                                    height: 300
-                                    anchors.top: parent.top
-                                    anchors.left: parent.left
-                                    anchors.margins: 10
-                                    radius: 5
-                                    border.color: "grey"
-                                    border.width: 1
-
-                                    Text{
-                                        text: "Camera View"
-                                        font.pointSize: 18
-                                        anchors.centerIn: parent
-                                    }
-                                }
                             }
 
                             Rectangle {
@@ -126,24 +141,50 @@ Window {
                                 Layout.preferredHeight: 0
                                 color: "transparent"
 
-                                // Vertical slider at bottom left
+                                // Slider for speed
                                 Slider {
                                     id: verticalSlider
                                     orientation: Qt.Vertical
                                     anchors.bottom: parent.bottom
                                     anchors.left: parent.left
                                     anchors.margins: 20
+                                    anchors.bottomMargin: 80
                                     height: 250
-                                    width: 40
+                                    width: 30
                                     from: -255
                                     to: 255
                                     value: 0
+
+                                    // Bind to car controller
+                                    onValueChanged: {
+                                        carController.speedValue = Math.round(value)
+                                    }
+
+                                    // Track pressed state
+                                    onPressedChanged: {
+                                        carController.setSpeedPressed(pressed)
+
+                                        // Auto-return to center when released (for speed dead zone)
+                                        if (!pressed && Math.abs(value) <= carController.speedDeadZone) {
+                                            value = 0
+                                        }
+                                    }
 
                                     background: Rectangle {
                                         anchors.fill: parent
                                         implicitWidth: 4
                                         color: "darkgrey"
-                                        radius: 2
+                                        radius: 10
+
+                                        // Dead zone indicator
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: parent.width + 10
+                                            height: (carController.speedDeadZone * 2 / 510) * parent.height
+                                            color: "lightcoral"
+                                            opacity: 0.3
+                                            radius: 5
+                                        }
                                     }
 
                                     // Custom handle for better visibility
@@ -153,53 +194,133 @@ Window {
                                         implicitWidth: 50
                                         implicitHeight: 50
                                         radius: 25
-                                        color: "#3E5F44"
+                                        color: Math.abs(verticalSlider.value) > carController.speedDeadZone ? "#3E5F44" : "#8E8E8E"
                                         border.color: "#bdbebf"
                                     }
 
-                                    // Optional: Add value display
+                                    // Add value display
                                     Text {
                                         anchors.left: parent.right
-                                        anchors.leftMargin: 10
+                                        anchors.leftMargin: 25
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: Math.round(verticalSlider.value)
+                                        text: "Speed: " + Math.round(verticalSlider.value)
                                         color: "black"
-                                        font.pointSize: 18
+                                        font.pointSize: 14
                                     }
                                 }
 
-                                // Horizontal slider at bottom right
+                                // Slider for turning with auto-centering
                                 Slider {
                                     id: horizontalSlider
                                     orientation: Qt.Horizontal
                                     anchors.bottom: parent.bottom
                                     anchors.right: parent.right
                                     anchors.margins: 20
-                                    width: 200
-                                    height: 40
-                                    from: 0
-                                    to: 100
-                                    value: 50
+                                    anchors.bottomMargin: 80
+                                    width: 250
+                                    height: 30
+                                    from: -50
+                                    to: 50
+                                    value: carController.turnValue
+
+                                    // Bind to car controller
+                                    onValueChanged: {
+                                        // Only update if user is actively controlling
+                                        if (pressed) {
+                                            carController.turnValue = Math.round(value)
+                                        }
+                                    }
+
+                                    // Track pressed state for auto-centering behavior
+                                    onPressedChanged: {
+                                        carController.setSteeringPressed(pressed)
+                                    }
+
+                                    // Auto-center animation - triggered by CarController
+                                    Behavior on value {
+                                        NumberAnimation {
+                                            duration: 300
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+
+                                    background: Rectangle {
+                                        anchors.fill: parent
+                                        implicitWidth: 4
+                                        color: "darkgrey"
+                                        radius: 10
+
+                                        // Dead zone indicator
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: (carController.turnDeadZone * 2 / 100) * parent.width
+                                            height: parent.height + 10
+                                            color: "lightcoral"
+                                            opacity: 0.3
+                                            radius: 5
+                                        }
+                                    }
 
                                     // Custom handle for better visibility
                                     handle: Rectangle {
                                         x: horizontalSlider.leftPadding + (horizontalSlider.horizontal ? horizontalSlider.visualPosition * (horizontalSlider.availableWidth - width) : (horizontalSlider.availableWidth - width) / 2)
                                         y: horizontalSlider.topPadding + (horizontalSlider.horizontal ? (horizontalSlider.availableHeight - height) / 2 : horizontalSlider.visualPosition * (horizontalSlider.availableHeight - height))
-                                        implicitWidth: 26
-                                        implicitHeight: 26
-                                        radius: 13
-                                        color: "black"
+                                        implicitWidth: 50
+                                        implicitHeight: 50
+                                        radius: 25
+                                        color: Math.abs(horizontalSlider.value) > carController.turnDeadZone ? "#3E5F44" : "#8E8E8E"
                                         border.color: "#bdbebf"
                                     }
 
-                                    // Optional: Add value display
+                                    // Add value display
                                     Text {
                                         anchors.top: parent.bottom
-                                        anchors.topMargin: 5
+                                        anchors.topMargin: 20
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        text: Math.round(horizontalSlider.value)
+                                        text: "Turn: " + Math.round(horizontalSlider.value)
                                         color: "black"
-                                        font.pointSize: 18
+                                        font.pointSize: 16
+                                    }
+                                }
+
+                                // Control info display
+                                Rectangle {
+                                    anchors.top: parent.top
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 80
+                                    width: 200
+                                    height: 100
+                                    color: "white"
+                                    opacity: 0.9
+                                    radius: 5
+                                    border.color: "grey"
+
+                                    Column {
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 5
+
+                                        Text {
+                                            text: "Motor Commands"
+                                            font.bold: true
+                                            font.pointSize: 12
+                                        }
+
+                                        Text {
+                                            text: "Left: " + carController.leftMotorSpeed
+                                            font.pointSize: 10
+                                        }
+
+                                        Text {
+                                            text: "Right: " + carController.rightMotorSpeed
+                                            font.pointSize: 10
+                                        }
+
+                                        Text {
+                                            text: "Status: " + (carController.speedValue === 0 && carController.turnValue === 0 ? "Stopped" : "Moving")
+                                            font.pointSize: 10
+                                            color: carController.speedValue === 0 && carController.turnValue === 0 ? "red" : "green"
+                                        }
                                     }
                                 }
                             }
