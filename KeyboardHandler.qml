@@ -4,17 +4,14 @@ FocusScope {
     anchors.fill: parent
     focus: true
 
-    // Properties to expose key states
     property bool wPressed: false
     property bool sPressed: false
     property bool aPressed: false
     property bool dPressed: false
 
-    // Properties for auto toggles
-    property bool autoReturnEnabled: true
+    property bool autoReturnEnabled: false
     property bool autoTurnEnabled: true
 
-    // Signal for when keys change
     signal keysChanged()
 
     Keys.onPressed: function(event) {
@@ -35,9 +32,7 @@ FocusScope {
                 break
             case Qt.Key_Shift:
                 autoReturnEnabled = !autoReturnEnabled
-                autoTurnEnabled = autoReturnEnabled
                 console.log("Auto center", autoReturnEnabled ? "enabled" : "disabled")
-                console.log("Auto turn", autoTurnEnabled ? "enabled" : "disabled")
                 break
             case Qt.Key_Control:
                 autoTurnEnabled = !autoTurnEnabled

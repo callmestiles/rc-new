@@ -146,9 +146,7 @@ Window {
                                 onCheckedChanged: {
                                     if (checked !== keyboardHandler.autoReturnEnabled) {
                                         keyboardHandler.autoReturnEnabled = checked
-                                        keyboardHandler.autoTurnEnabled = checked
                                         console.log("Auto center", checked ? "enabled" : "disabled")
-                                        console.log("Auto turn", keyboardHandler.autoTurnEnabled ? "enabled" : "disabled")
                                     }
                                     keyboardHandler.forceActiveFocus()
                                 }
@@ -424,11 +422,13 @@ Window {
                                     onPressedChanged: {
                                         carController.setSteeringPressed(pressed)
 
-                                        if (!pressed && keyboardHandler.autoTurnEnabled && Math.abs(value) <= carController.turnDeadZone) {
-                                            value = 0
-                                        }
-
                                         if (!pressed) {
+                                            if (!keyboardHandler.aPressed && !keyboardHandler.dPressed) {
+                                                value = 0
+                                            } else if (keyboardHandler.autoTurnEnabled && Math.abs(value) <= carController.turnDeadZone) {
+                                                value = 0
+                                            }
+
                                             keyboardHandler.forceActiveFocus()
                                         }
                                     }
