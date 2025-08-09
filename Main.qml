@@ -5,14 +5,59 @@ import PathfindingEngine
 import CarController
 
 Window {
+    id: mainWindow
     visible: true
     title: qsTr("Transformers GUI")
     visibility: "Maximized"
 
     property var globalOptimalPath: []
 
+    function updateSliderValues() {
+        var currentPage = stackView.currentItem
+        if (currentPage && currentPage.objectName === "controlPage") {
+            var speedValue
+            if (keyboardHandler.wPressed && !keyboardHandler.sPressed) {
+                speedValue = 255
+            } else if (keyboardHandler.sPressed && !keyboardHandler.wPressed) {
+                speedValue = -255
+            } else if (keyboardHandler.wPressed && keyboardHandler.sPressed) {
+                speedValue = 0
+            } else if (keyboardHandler.autoReturnEnabled) {
+                speedValue = 0
+            } else {
+                speedValue = currentPage.getVerticalSliderValue()
+            }
+
+            currentPage.setVerticalSliderValue(speedValue)
+
+            var turnValue
+            if (keyboardHandler.aPressed && !keyboardHandler.dPressed) {
+                turnValue = -50
+            } else if (keyboardHandler.dPressed && !keyboardHandler.aPressed) {
+                turnValue = 50
+            } else if (keyboardHandler.aPressed && keyboardHandler.dPressed) {
+                turnValue = 0
+            } else if (keyboardHandler.autoTurnEnabled) {
+                turnValue = 0
+            } else {
+                turnValue = currentPage.getHorizontalSliderValue()
+            }
+
+            currentPage.setHorizontalSliderValue(turnValue)
+        }
+    }
+
     PathfindingEngine {
         id: pathfindingEngine
+    }
+
+    Component.onCompleted: {
+        forceActiveFocus()
+    }
+
+    KeyboardHandler {
+        id: keyboardHandler
+        onKeysChanged: updateSliderValues()
     }
 
     StackView{
@@ -24,20 +69,35 @@ Window {
             id: control
 
             Page {
-                objectName: "controlPage" // Add objectName for identification
+                objectName: "controlPage"
 
-                // Car Controller instance
+                function setVerticalSliderValue(value) {
+                    verticalSlider.value = value
+                }
+
+                function setHorizontalSliderValue(value) {
+                    horizontalSlider.value = value
+                }
+
+                function getVerticalSliderValue() {
+                    return verticalSlider.value
+                }
+
+                function getHorizontalSliderValue() {
+                    return horizontalSlider.value
+                }
+
                 CarController {
                     id: carController
                     serverUrl: "http://192.168.4.1/control"
                     speedDeadZone: 15
                     turnDeadZone: 5
 
-                    onCommandSent: {
+                    onCommandSent: function(command) {
                         console.log("Command sent:", command)
                     }
 
-                    onNetworkError: {
+                    onNetworkError: function(error) {
                         console.log("Network error:", error)
                     }
                 }
@@ -55,7 +115,6 @@ Window {
                             font.pointSize: 20
                         }
 
-                        // Connection status indicator
                         Rectangle {
                             width: 20
                             height: 20
@@ -71,9 +130,133 @@ Window {
                                 font.pointSize: 12
                             }
                         }
+
+                        RowLayout {
+                            Layout.leftMargin: 100
+                            spacing: 10
+
+                            Text {
+                                text: "Auto center:"
+                                font.pointSize: 12
+                                color: "#333333"
+                            }
+
+                            Switch {
+                                checked: keyboardHandler.autoReturnEnabled
+                                onCheckedChanged: {
+                                    if (checked !== keyboardHandler.autoReturnEnabled) {
+                                        keyboardHandler.autoReturnEnabled = checked
+                                        keyboardHandler.autoTurnEnabled = checked
+                                        console.log("Auto center", checked ? "enabled" : "disabled")
+                                        console.log("Auto turn", keyboardHandler.autoTurnEnabled ? "enabled" : "disabled")
+                                    }
+                                    keyboardHandler.forceActiveFocus()
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.leftMargin: 20
+                            spacing: 10
+
+                            Text {
+                                text: "Auto turn:"
+                                font.pointSize: 12
+                                color: "#333333"
+                            }
+
+                            Switch {
+                                checked: keyboardHandler.autoTurnEnabled
+                                onCheckedChanged: {
+                                    if (checked !== keyboardHandler.autoTurnEnabled) {
+                                        keyboardHandler.autoTurnEnabled = checked
+                                        console.log("Auto turn", checked ? "enabled" : "disabled")
+                                    }
+                                    keyboardHandler.forceActiveFocus()
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.leftMargin: 20
+                            width: 150
+                            height: 60
+                            color: "lightblue"
+                            opacity: 0.8
+                            radius: 5
+                            border.color: "darkblue"
+                            border.width: 1
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 2
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "WASD Controls"
+                                    font.bold: true
+                                    font.pointSize: 10
+                                    color: "darkblue"
+                                }
+
+                                Grid {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    columns: 3
+                                    spacing: 2
+
+                                    Rectangle { width: 20; height: 15; color: "transparent" }
+                                    Rectangle {
+                                        width: 20; height: 15;
+                                        color: keyboardHandler.wPressed ? "green" : "lightgray"
+                                        radius: 2
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "W"
+                                            font.pointSize: 8
+                                            color: keyboardHandler.wPressed ? "white" : "black"
+                                        }
+                                    }
+                                    Rectangle { width: 20; height: 15; color: "transparent" }
+
+                                    Rectangle {
+                                        width: 20; height: 15;
+                                        color: keyboardHandler.aPressed ? "green" : "lightgray"
+                                        radius: 2
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "A"
+                                            font.pointSize: 8
+                                            color: keyboardHandler.aPressed ? "white" : "black"
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 20; height: 15;
+                                        color: keyboardHandler.sPressed ? "green" : "lightgray"
+                                        radius: 2
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "S"
+                                            font.pointSize: 8
+                                            color: keyboardHandler.sPressed ? "white" : "black"
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 20; height: 15;
+                                        color: keyboardHandler.dPressed ? "green" : "lightgray"
+                                        radius: 2
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "D"
+                                            font.pointSize: 8
+                                            color: keyboardHandler.dPressed ? "white" : "black"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
-                    Rectangle { //this will be the actual camera feed from micro-controller
+                    Rectangle {
                         color: "lightgrey"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -83,7 +266,7 @@ Window {
 
                             RowLayout {
                                 anchors.fill: parent
-                                //MINI MAP
+
                                 Rectangle {
                                     color: "#F0E4D3"
                                     width: 400
@@ -95,16 +278,14 @@ Window {
                                     border.color: "grey"
                                     border.width: 1
 
-                                    // Mini terrain map
                                     TopographicalMapView {
                                         id: miniMap
                                         anchors.fill: parent
                                         anchors.margins: 5
-                                        showConnections: false // Hide connections in mini-map for cleaner view
+                                        showConnections: false
                                         showOptimalPath: true
-                                        optimalPath: globalOptimalPath // Bind to global path
+                                        optimalPath: globalOptimalPath
 
-                                        // Watch for changes in globalOptimalPath and refresh
                                         Connections {
                                             target: application
                                             function onGlobalOptimalPathChanged() {
@@ -113,7 +294,6 @@ Window {
                                         }
                                     }
 
-                                    // Mini-map title
                                     Text {
                                         anchors.top: parent.top
                                         anchors.left: parent.left
@@ -124,11 +304,11 @@ Window {
                                         color: "#333333"
                                     }
 
-                                    // Click to expand
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
                                             stackView.push(map)
+                                            keyboardHandler.forceActiveFocus()
                                         }
                                         cursorShape: Qt.PointingHandCursor
                                     }
@@ -141,7 +321,6 @@ Window {
                                 Layout.preferredHeight: 0
                                 color: "transparent"
 
-                                // Slider for speed
                                 Slider {
                                     id: verticalSlider
                                     orientation: Qt.Vertical
@@ -155,18 +334,26 @@ Window {
                                     to: 255
                                     value: 0
 
-                                    // Bind to car controller
+                                    Behavior on value {
+                                        NumberAnimation {
+                                            duration: 700
+                                            easing.type: Easing.OutQuad
+                                        }
+                                    }
+
                                     onValueChanged: {
                                         carController.speedValue = Math.round(value)
                                     }
 
-                                    // Track pressed state
                                     onPressedChanged: {
                                         carController.setSpeedPressed(pressed)
 
-                                        // Auto-return to center when released (for speed dead zone)
-                                        if (!pressed && Math.abs(value) <= carController.speedDeadZone) {
+                                        if (!pressed && keyboardHandler.autoReturnEnabled && Math.abs(value) <= carController.speedDeadZone) {
                                             value = 0
+                                        }
+
+                                        if (!pressed) {
+                                            keyboardHandler.forceActiveFocus()
                                         }
                                     }
 
@@ -176,7 +363,6 @@ Window {
                                         color: "darkgrey"
                                         radius: 10
 
-                                        // Dead zone indicator
                                         Rectangle {
                                             anchors.centerIn: parent
                                             width: parent.width + 10
@@ -187,7 +373,6 @@ Window {
                                         }
                                     }
 
-                                    // Custom handle for better visibility
                                     handle: Rectangle {
                                         x: verticalSlider.leftPadding + (verticalSlider.horizontal ? verticalSlider.visualPosition * (verticalSlider.availableWidth - width) : (verticalSlider.availableWidth - width) / 2)
                                         y: verticalSlider.topPadding + (verticalSlider.horizontal ? (verticalSlider.availableHeight - height) / 2 : verticalSlider.visualPosition * (verticalSlider.availableHeight - height))
@@ -198,7 +383,6 @@ Window {
                                         border.color: "#bdbebf"
                                     }
 
-                                    // Add value display
                                     Text {
                                         anchors.left: parent.right
                                         anchors.leftMargin: 25
@@ -209,7 +393,6 @@ Window {
                                     }
                                 }
 
-                                // Slider for turning with auto-centering
                                 Slider {
                                     id: horizontalSlider
                                     orientation: Qt.Horizontal
@@ -223,24 +406,30 @@ Window {
                                     to: 50
                                     value: carController.turnValue
 
-                                    // Bind to car controller
+                                    Behavior on value {
+                                        NumberAnimation {
+                                            duration: 700
+                                            easing.type: Easing.OutQuad
+                                        }
+                                    }
+
                                     onValueChanged: {
-                                        // Only update if user is actively controlling
                                         if (pressed) {
+                                            carController.turnValue = Math.round(value)
+                                        } else {
                                             carController.turnValue = Math.round(value)
                                         }
                                     }
 
-                                    // Track pressed state for auto-centering behavior
                                     onPressedChanged: {
                                         carController.setSteeringPressed(pressed)
-                                    }
 
-                                    // Auto-center animation - triggered by CarController
-                                    Behavior on value {
-                                        NumberAnimation {
-                                            duration: 300
-                                            easing.type: Easing.OutCubic
+                                        if (!pressed && keyboardHandler.autoTurnEnabled && Math.abs(value) <= carController.turnDeadZone) {
+                                            value = 0
+                                        }
+
+                                        if (!pressed) {
+                                            keyboardHandler.forceActiveFocus()
                                         }
                                     }
 
@@ -250,7 +439,6 @@ Window {
                                         color: "darkgrey"
                                         radius: 10
 
-                                        // Dead zone indicator
                                         Rectangle {
                                             anchors.centerIn: parent
                                             width: (carController.turnDeadZone * 2 / 100) * parent.width
@@ -261,7 +449,6 @@ Window {
                                         }
                                     }
 
-                                    // Custom handle for better visibility
                                     handle: Rectangle {
                                         x: horizontalSlider.leftPadding + (horizontalSlider.horizontal ? horizontalSlider.visualPosition * (horizontalSlider.availableWidth - width) : (horizontalSlider.availableWidth - width) / 2)
                                         y: horizontalSlider.topPadding + (horizontalSlider.horizontal ? (horizontalSlider.availableHeight - height) / 2 : horizontalSlider.visualPosition * (horizontalSlider.availableHeight - height))
@@ -272,7 +459,6 @@ Window {
                                         border.color: "#bdbebf"
                                     }
 
-                                    // Add value display
                                     Text {
                                         anchors.top: parent.bottom
                                         anchors.topMargin: 20
@@ -283,7 +469,6 @@ Window {
                                     }
                                 }
 
-                                // Control info display
                                 Rectangle {
                                     anchors.top: parent.top
                                     anchors.left: parent.left
@@ -354,18 +539,18 @@ Window {
                             text: "Back"
                             onClicked: {
                                 stackView.replace(control)
+                                keyboardHandler.forceActiveFocus()
                             }
                             Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
-                    Rectangle { //Full-size map view
+                    Rectangle {
                         color: "#F0E4D3"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.preferredHeight: 0
 
-                        // Full terrain map
                         TopographicalMapView {
                             id: fullMap
                             anchors.fill: parent
@@ -373,14 +558,12 @@ Window {
 
                             showConnections: true
                             showOptimalPath: true
-                            optimalPath: globalOptimalPath // Bind to global path
+                            optimalPath: globalOptimalPath
 
-                            // Initialize pathfinding engine with map data
                             Component.onCompleted: {
                                 initializePathfindingEngineLocal()
                             }
 
-                            // Watch for changes in globalOptimalPath and refresh
                             Connections {
                                 target: application
                                 function onGlobalOptimalPathChanged() {
@@ -432,8 +615,6 @@ Window {
                         }
                     }
 
-                    // Replace the existing control buttons RowLayout in Main.qml with this:
-
                     RowLayout {
                         Layout.fillHeight: true
                         Layout.preferredHeight: 0
@@ -443,13 +624,11 @@ Window {
                         Button {
                             text: "Optimal Ball Collection\n(8 balls max)"
                             onClicked: {
-                                // Find optimal route collecting up to 8 balls and returning to release
                                 var optimalRoute = pathfindingEngine.findOptimalBallCollectionRoute("start_a", "release", 8)
                                 if (optimalRoute.length > 0) {
                                     globalOptimalPath = optimalRoute
                                     fullMap.refresh()
 
-                                    // Calculate total points
                                     var totalPoints = 0
                                     for (var i = 0; i < optimalRoute.length; i++) {
                                         if (optimalRoute[i].points) {
@@ -464,21 +643,20 @@ Window {
                                     console.log("No optimal collection route found")
                                     pathStatusText.text = "No route found"
                                 }
+                                keyboardHandler.forceActiveFocus()
                             }
                         }
 
                         Button {
                             text: "High Value Route\n(Priority targets)"
                             onClicked: {
-                                // Find route focusing on high-value targets only
                                 var highValueNodes = [
-                                    "b16", "b17", // Star balls (40 points each)
-                                    "comm_tow"    // Communication tower (60 points)
+                                    "b16", "b17",
+                                    "comm_tow"
                                 ]
 
                                 var optimalRoute = pathfindingEngine.findOptimalCollectionRoute("start_a", highValueNodes)
                                 if (optimalRoute.length > 0) {
-                                    // Add release area to the end
                                     var releaseNode = fullMap.getNodeByElementId("release")
                                     if (releaseNode) {
                                         optimalRoute.push(releaseNode)
@@ -501,13 +679,13 @@ Window {
                                     console.log("No high value route found")
                                     pathStatusText.text = "No route found"
                                 }
+                                keyboardHandler.forceActiveFocus()
                             }
                         }
 
                         Button {
                             text: "Start B Route\n(Alternative start)"
                             onClicked: {
-                                // Find optimal route from start_b
                                 var optimalRoute = pathfindingEngine.findOptimalBallCollectionRoute("start_b", "release", 8)
                                 if (optimalRoute.length > 0) {
                                     globalOptimalPath = optimalRoute
@@ -527,6 +705,7 @@ Window {
                                     console.log("No route found from start B")
                                     pathStatusText.text = "No route found"
                                 }
+                                keyboardHandler.forceActiveFocus()
                             }
                         }
 
@@ -538,11 +717,11 @@ Window {
                                 fullMap.refresh()
                                 pathStatusText.text = "Path Status: None"
                                 console.log("Path cleared")
+                                keyboardHandler.forceActiveFocus()
                             }
                         }
                     }
 
-                    // Update the status row to show more detailed information:
                     RowLayout {
                         Layout.fillHeight: true
                         Layout.preferredHeight: 0
@@ -567,6 +746,4 @@ Window {
             }
         }
     }
-
-
 }
