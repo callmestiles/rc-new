@@ -472,6 +472,7 @@ Window {
                                 Rectangle {
                                     anchors.top: parent.top
                                     anchors.left: parent.left
+                                    anchors.topMargin: -50
                                     anchors.leftMargin: 80
                                     width: 200
                                     height: 100
