@@ -90,7 +90,7 @@ Window {
                 CarController {
                     id: carController
                     serverUrl: "http://192.168.4.1/setSpeed"
-                    speedDeadZone: 30
+                    speedDeadZone: 10
                     turnDeadZone: 5
 
                     onCommandSent: function(command) {
@@ -325,8 +325,8 @@ Window {
                                     anchors.bottom: parent.bottom
                                     anchors.left: parent.left
                                     anchors.margins: 20
-                                    anchors.bottomMargin: 80
-                                    height: 250
+                                    anchors.bottomMargin: 20
+                                    height: 400
                                     width: 30
                                     from: -255
                                     to: 255
@@ -334,7 +334,7 @@ Window {
 
                                     Behavior on value {
                                         NumberAnimation {
-                                            duration: 700
+                                            duration: 2000
                                             easing.type: Easing.OutQuad
                                         }
                                     }
@@ -472,7 +472,7 @@ Window {
                                 Rectangle {
                                     anchors.top: parent.top
                                     anchors.left: parent.left
-                                    anchors.topMargin: -50
+                                    anchors.topMargin: 100
                                     anchors.leftMargin: 80
                                     width: 200
                                     height: 100

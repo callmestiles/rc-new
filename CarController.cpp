@@ -15,7 +15,7 @@ CarController::CarController(QObject *parent)
     , m_processedSpeed(0)
     , m_processedTurn(0)
     , m_serverUrl("http://192.168.4.1/setSpeed")
-    , m_speedDeadZone(30)  // Dead zone for speed slider
+    , m_speedDeadZone(10)  // Dead zone for speed slider
     , m_turnDeadZone(5)    // Dead zone for turn slider
     , m_isConnected(false)
     , m_steeringPressed(false)
