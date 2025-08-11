@@ -89,8 +89,8 @@ Window {
 
                 CarController {
                     id: carController
-                    serverUrl: "http://192.168.4.1/control"
-                    speedDeadZone: 15
+                    serverUrl: "http://192.168.4.1/setSpeed"
+                    speedDeadZone: 30
                     turnDeadZone: 5
 
                     onCommandSent: function(command) {
