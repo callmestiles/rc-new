@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <PathfindingEngine.h>
 #include <CarController.h>
+#include <ArmController.h>
 
 int main(int argc, char *argv[])
 {
@@ -10,14 +11,17 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<PathfindingEngine>("PathfindingEngine", 1, 0, "PathfindingEngine");
     qmlRegisterType<CarController>("CarController", 1, 0, "CarController");
+    qmlRegisterType<ArmController>("ArmController", 1, 0, "ArmController");
 
     QQmlApplicationEngine engine;
 
     PathfindingEngine pathfindingEngine;
     CarController carController;
+    ArmController armController;
 
     engine.rootContext()->setContextProperty("pathfindingEngine", &pathfindingEngine);
     engine.rootContext()->setContextProperty("carController", &carController);
+    engine.rootContext()->setContextProperty("armController", &armController);
 
     const QUrl url(QStringLiteral("qrc:/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

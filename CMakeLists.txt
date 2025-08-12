@@ -15,6 +15,8 @@ qt_add_executable(appRC_GUI_NEW
     PathfindingEngine.cpp
     CarController.h
     CarController.cpp
+    ArmController.h
+    ArmController.cpp
     main.cpp
     ${resources}
 )

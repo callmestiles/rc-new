@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import PathfindingEngine
 import CarController
+import ArmController
 
 Window {
     id: mainWindow
@@ -92,14 +93,11 @@ Window {
                     serverUrl: "http://192.168.4.1/setSpeed"
                     speedDeadZone: 10
                     turnDeadZone: 5
+                }
 
-                    onCommandSent: function(command) {
-                        console.log("Command sent:", command)
-                    }
-
-                    onNetworkError: function(error) {
-                        console.log("Network error:", error)
-                    }
+                ArmController {
+                    id: armController
+                    serverUrl: "http://192.168.4.1/setServo"
                 }
 
                 ColumnLayout {
@@ -120,15 +118,25 @@ Window {
                             height: 20
                             radius: 10
                             color: carController.isConnected ? "green" : "red"
+                        }
 
-                            Text {
-                                anchors.left: parent.right
-                                anchors.leftMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: carController.isConnected ? "Connected" : "Disconnected"
-                                color: carController.isConnected ? "green" : "red"
-                                font.pointSize: 12
-                            }
+                        Text {
+                            text: carController.isConnected ? "Connected" : "Disconnected"
+                            color: carController.isConnected ? "green" : "red"
+                            font.pointSize: 12
+                        }
+
+                        Rectangle {
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: armController.isConnected ? "green" : "red"
+                        }
+
+                        Text {
+                            text: armController.isConnected ? "Arm Connected" : "Arm Disconnected"
+                            color: armController.isConnected ? "green" : "red"
+                            font.pointSize: 12
                         }
 
                         RowLayout {
@@ -262,53 +270,331 @@ Window {
                         ColumnLayout{
                             anchors.fill: parent
 
-                            RowLayout {
-                                anchors.fill: parent
+                            Rectangle{
+                                color: "transparent"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 400
 
-                                Rectangle {
-                                    color: "#F0E4D3"
-                                    width: 400
-                                    height: 300
-                                    anchors.top: parent.top
-                                    anchors.right: parent.right
-                                    anchors.margins: 10
-                                    radius: 5
-                                    border.color: "grey"
-                                    border.width: 1
+                                RowLayout {
+                                    anchors.fill: parent
 
-                                    TopographicalMapView {
-                                        id: miniMap
-                                        anchors.fill: parent
-                                        anchors.margins: 5
-                                        showConnections: false
-                                        showOptimalPath: true
-                                        optimalPath: globalOptimalPath
+                                    // ARM CONTROL PANEL - CENTERED
+                                   Rectangle {
+                                       Layout.leftMargin: 180
+                                       width: 500
+                                       height: 380
+                                       color: "#FAF9EE"
+                                       radius: 10
+                                       border.color: "black"
+                                       border.width: 2
 
-                                        Connections {
-                                            target: application
-                                            function onGlobalOptimalPathChanged() {
-                                                miniMap.refresh()
+                                       ColumnLayout {
+                                           anchors.fill: parent
+                                           anchors.margins: 15
+                                           spacing: 15
+
+                                           Text {
+                                               text: "Robotic Arm Control"
+                                               font.bold: true
+                                               font.pointSize: 16
+                                               color: "#2C3E50"
+                                               Layout.alignment: Qt.AlignHCenter
+                                           }
+
+                                           // Position Control Section
+                                           Rectangle {
+                                               Layout.fillWidth: true
+                                               height: 180
+                                               color: "white"
+                                               radius: 8
+                                               border.color: "#BDC3C7"
+                                               border.width: 1
+
+                                               ColumnLayout {
+                                                   anchors.fill: parent
+                                                   anchors.margins: 10
+                                                   spacing: 10
+
+                                                   Text {
+                                                       text: "Position Control (Inverse Kinematics)"
+                                                       font.bold: true
+                                                       font.pointSize: 12
+                                                       color: "#34495E"
+                                                   }
+
+                                                   GridLayout {
+                                                       columns: 3
+                                                       columnSpacing: 15
+                                                       rowSpacing: 10
+
+                                                       // X Control
+                                                       Text { text: "X:"; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Slider {
+                                                           id: xSlider
+                                                           from: 5
+                                                           to: 35
+                                                           value: armController.targetX
+                                                           Layout.preferredWidth: 120
+                                                           onValueChanged: {
+                                                               if (pressed) armController.targetX = value
+                                                           }
+                                                       }
+                                                       Text {
+                                                           text: armController.targetX.toFixed(1) + " cm"
+                                                           font.pointSize: 10
+                                                           color: "#2C3E50"
+                                                           Layout.preferredWidth: 50
+                                                       }
+
+                                                       // Y Control
+                                                       Text { text: "Y:"; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Slider {
+                                                           id: ySlider
+                                                           from: -20
+                                                           to: 20
+                                                           value: armController.targetY
+                                                           Layout.preferredWidth: 120
+                                                           onValueChanged: {
+                                                               if (pressed) armController.targetY = value
+                                                           }
+                                                       }
+                                                       Text {
+                                                           text: armController.targetY.toFixed(1) + " cm"
+                                                           font.pointSize: 10
+                                                           color: "#2C3E50"
+                                                           Layout.preferredWidth: 50
+                                                       }
+
+                                                       // Z Control
+                                                       Text { text: "Z:"; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Slider {
+                                                           id: zSlider
+                                                           from: 0
+                                                           to: 30
+                                                           value: armController.targetZ
+                                                           Layout.preferredWidth: 120
+                                                           onValueChanged: {
+                                                               if (pressed) armController.targetZ = value
+                                                           }
+                                                       }
+                                                       Text {
+                                                           text: armController.targetZ.toFixed(1) + " cm"
+                                                           font.pointSize: 10
+                                                           color: "#2C3E50"
+                                                           Layout.preferredWidth: 50
+                                                       }
+                                                   }
+
+                                                   RowLayout {
+                                                       Layout.alignment: Qt.AlignHCenter
+                                                       spacing: 10
+
+                                                       Button {
+                                                           text: "Home Position"
+                                                           onClicked: {
+                                                               armController.resetToHome()
+                                                               keyboardHandler.forceActiveFocus()
+                                                           }
+                                                       }
+
+                                                       Button {
+                                                           text: "Apply Position"
+                                                           onClicked: {
+                                                               armController.moveToPosition(xSlider.value, ySlider.value, zSlider.value)
+                                                               keyboardHandler.forceActiveFocus()
+                                                           }
+                                                           // enabled: armController.isConnected
+                                                       }
+                                                   }
+                                               }
+                                           }
+
+                                           // Servo Angle Display
+                                           Rectangle {
+                                               Layout.fillWidth: true
+                                               height: 120
+                                               color: "white"
+                                               radius: 8
+                                               border.color: "#BDC3C7"
+                                               border.width: 1
+
+                                               ColumnLayout {
+                                                   anchors.fill: parent
+                                                   anchors.margins: 10
+                                                   spacing: 8
+
+                                                   Text {
+                                                       text: "Servo Angles"
+                                                       font.bold: true
+                                                       font.pointSize: 12
+                                                       color: "#34495E"
+                                                   }
+
+                                                   GridLayout {
+                                                       columns: 4
+                                                       columnSpacing: 20
+                                                       rowSpacing: 5
+
+                                                       Text { text: "Base"; font.bold: true; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Text { text: "Shoulder"; font.bold: true; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Text { text: "Elbow"; font.bold: true; font.pointSize: 10; color: "#7F8C8D" }
+                                                       Text { text: "Wrist"; font.bold: true; font.pointSize: 10; color: "#7F8C8D" }
+
+                                                       Rectangle {
+                                                           width: 60; height: 25
+                                                           color: "#3498DB"
+                                                           radius: 4
+                                                           Text {
+                                                               anchors.centerIn: parent
+                                                               text: armController.baseAngle + "°"
+                                                               color: "white"
+                                                               font.bold: true
+                                                               font.pointSize: 10
+                                                           }
+                                                       }
+
+                                                       Rectangle {
+                                                           width: 60; height: 25
+                                                           color: "#E74C3C"
+                                                           radius: 4
+                                                           Text {
+                                                               anchors.centerIn: parent
+                                                               text: armController.shoulderAngle + "°"
+                                                               color: "white"
+                                                               font.bold: true
+                                                               font.pointSize: 10
+                                                           }
+                                                       }
+
+                                                       Rectangle {
+                                                           width: 60; height: 25
+                                                           color: "#F39C12"
+                                                           radius: 4
+                                                           Text {
+                                                               anchors.centerIn: parent
+                                                               text: armController.elbowAngle + "°"
+                                                               color: "white"
+                                                               font.bold: true
+                                                               font.pointSize: 10
+                                                           }
+                                                       }
+
+                                                       Rectangle {
+                                                           width: 60; height: 25
+                                                           color: "#27AE60"
+                                                           radius: 4
+                                                           Text {
+                                                               anchors.centerIn: parent
+                                                               text: armController.wristAngle + "°"
+                                                               color: "white"
+                                                               font.bold: true
+                                                               font.pointSize: 10
+                                                           }
+                                                       }
+                                                   }
+                                               }
+                                           }
+
+                                           // Manual Servo Control
+                                           Rectangle {
+                                               Layout.fillWidth: true
+                                               height: 60
+                                               color: "white"
+                                               radius: 8
+                                               border.color: "#BDC3C7"
+                                               border.width: 1
+
+                                               RowLayout {
+                                                   anchors.fill: parent
+                                                   anchors.margins: 10
+                                                   spacing: 10
+
+                                                   Text {
+                                                       text: "Quick Actions:"
+                                                       font.bold: true
+                                                       font.pointSize: 10
+                                                       color: "#34495E"
+                                                   }
+
+                                                   Button {
+                                                       text: "Grab Position"
+                                                       font.pointSize: 9
+                                                       onClicked: {
+                                                           armController.moveToPosition(20, 0, 5)
+                                                           keyboardHandler.forceActiveFocus()
+                                                       }
+                                                       enabled: armController.isConnected
+                                                   }
+
+                                                   Button {
+                                                       text: "Release Position"
+                                                       font.pointSize: 9
+                                                       onClicked: {
+                                                           armController.moveToPosition(15, 0, 20)
+                                                           keyboardHandler.forceActiveFocus()
+                                                       }
+                                                       enabled: armController.isConnected
+                                                   }
+
+                                                   Button {
+                                                       text: "Rest Position"
+                                                       font.pointSize: 9
+                                                       onClicked: {
+                                                           armController.moveToPosition(10, 0, 25)
+                                                           keyboardHandler.forceActiveFocus()
+                                                       }
+                                                       enabled: armController.isConnected
+                                                   }
+                                               }
+                                           }
+                                       }
+                                   }
+
+                                    Rectangle {
+                                        color: "#F0E4D3"
+                                        width: 400
+                                        height: 300
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 10
+                                        radius: 5
+                                        border.color: "grey"
+                                        border.width: 1
+
+                                        TopographicalMapView {
+                                            id: miniMap
+                                            anchors.fill: parent
+                                            anchors.margins: 5
+                                            showConnections: false
+                                            showOptimalPath: true
+                                            optimalPath: globalOptimalPath
+
+                                            Connections {
+                                                target: application
+                                                function onGlobalOptimalPathChanged() {
+                                                    miniMap.refresh()
+                                                }
                                             }
                                         }
-                                    }
 
-                                    Text {
-                                        anchors.top: parent.top
-                                        anchors.left: parent.left
-                                        anchors.margins: 5
-                                        text: "Mini Map"
-                                        font.bold: true
-                                        font.pixelSize: 12
-                                        color: "#333333"
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            stackView.push(map)
-                                            keyboardHandler.forceActiveFocus()
+                                        Text {
+                                            anchors.top: parent.top
+                                            anchors.left: parent.left
+                                            anchors.margins: 5
+                                            text: "Mini Map"
+                                            font.bold: true
+                                            font.pixelSize: 12
+                                            color: "#333333"
                                         }
-                                        cursorShape: Qt.PointingHandCursor
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: {
+                                                stackView.push(map)
+                                                keyboardHandler.forceActiveFocus()
+                                            }
+                                            cursorShape: Qt.PointingHandCursor
+                                        }
                                     }
                                 }
                             }
@@ -470,9 +756,9 @@ Window {
                                 }
 
                                 Rectangle {
-                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
                                     anchors.left: parent.left
-                                    anchors.topMargin: 100
+                                    anchors.bottomMargin: 30
                                     anchors.leftMargin: 80
                                     width: 200
                                     height: 100
