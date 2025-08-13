@@ -146,30 +146,42 @@ void CarController::updateMotorSpeeds()
 
 void CarController::calculateMotorSpeeds(int &leftSpeed, int &rightSpeed)
 {
-    // Base speed for both motors
-    int baseSpeed = m_processedSpeed;
+    // Check if we're doing a turn-on-spot (low/no speed but significant turn)
+    bool isTurnOnSpot = (qAbs(m_processedSpeed) <= 10) && (qAbs(m_processedTurn) > 0);
 
-    // Calculate turn adjustment
-    // Turn value ranges from -50 to 50, we'll use a percentage-based approach
-    double turnFactor = static_cast<double>(m_processedTurn) / 50.0; // Normalize to -1.0 to 1.0
+    if (isTurnOnSpot) {
+        // Turn on spot: opposite motor speeds
+        double turnFactor = static_cast<double>(m_processedTurn) / 50.0; // Normalize to -1.0 to 1.0
+        int turnSpeed = static_cast<int>(100 * qAbs(turnFactor)); // Base turn speed (adjust as needed)
 
-    // Calculate speed adjustments
-    // When turning right (positive), right motor slows down, left speeds up
-    // When turning left (negative), left motor slows down, right speeds up
-    int speedAdjustment = static_cast<int>(qAbs(baseSpeed) * 0.3 * qAbs(turnFactor)); // 30% max adjustment
-
-    if (turnFactor > 0) {
-        // Turning right
-        leftSpeed = baseSpeed + speedAdjustment;
-        rightSpeed = baseSpeed - speedAdjustment;
-    } else if (turnFactor < 0) {
-        // Turning left
-        leftSpeed = baseSpeed - speedAdjustment;
-        rightSpeed = baseSpeed + speedAdjustment;
+        if (turnFactor > 0) {
+            // Turning right: left forward, right backward
+            leftSpeed = turnSpeed;
+            rightSpeed = -turnSpeed;
+        } else {
+            // Turning left: left backward, right forward
+            leftSpeed = -turnSpeed;
+            rightSpeed = turnSpeed;
+        }
     } else {
-        // Going straight
-        leftSpeed = baseSpeed;
-        rightSpeed = baseSpeed;
+        // Normal movement with steering adjustment
+        int baseSpeed = m_processedSpeed;
+        double turnFactor = static_cast<double>(m_processedTurn) / 50.0;
+        int speedAdjustment = static_cast<int>(qAbs(baseSpeed) * 0.3 * qAbs(turnFactor));
+
+        if (turnFactor > 0) {
+            // Turning right
+            leftSpeed = baseSpeed + speedAdjustment;
+            rightSpeed = baseSpeed - speedAdjustment;
+        } else if (turnFactor < 0) {
+            // Turning left
+            leftSpeed = baseSpeed - speedAdjustment;
+            rightSpeed = baseSpeed + speedAdjustment;
+        } else {
+            // Going straight
+            leftSpeed = baseSpeed;
+            rightSpeed = baseSpeed;
+        }
     }
 
     // Clamp values to valid range (-255 to 255)
