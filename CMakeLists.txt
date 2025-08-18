@@ -17,6 +17,8 @@ qt_add_executable(appRC_GUI_NEW
     CarController.cpp
     ArmController.h
     ArmController.cpp
+    NetworkManager.h
+    NetworkManager.cpp
     main.cpp
     ${resources}
 )
@@ -26,7 +28,22 @@ qt_add_qml_module(appRC_GUI_NEW
     VERSION 1.0
     QML_FILES
         Main.qml
-        TopographicalMapView.qml
+        src/components/TopographicalMapView.qml
+        src/components/StatusBar.qml
+        src/components/StatusIndicator.qml
+        src/components/WASD.qml
+        src/components/ArmControlPanel.qml
+        src/components/MiniMap.qml
+        src/components/SliderControls.qml
+        src/components/FullMap.qml
+        src/components/MapControls.qml
+        src/components/PathStatus.qml
+        src/components/SpeedSlider.qml
+        src/components/TurnSlider.qml
+        src/components/MotorCommands.qml
+        src/components/StopButton.qml
+        src/pages/ControlPage.qml
+        src/pages/MapPage.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

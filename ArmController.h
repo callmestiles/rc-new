@@ -2,13 +2,9 @@
 #define ARMCONTROLLER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QTimer>
-#include <QUrl>
-#include <QUrlQuery>
 #include <QtMath>
+#include "NetworkManager.h"
 
 class ArmController : public QObject
 {
@@ -29,7 +25,7 @@ public:
     QString serverUrl() const { return m_serverUrl; }
     void setServerUrl(const QString &url);
 
-    bool isConnected() const { return m_isConnected; }
+    bool isConnected() const;
 
     double targetX() const { return m_targetX; }
     void setTargetX(double x);
@@ -63,18 +59,18 @@ signals:
     void networkError(const QString &error);
 
 private slots:
-    void onNetworkReply();
-    void checkConnection();
+    // void checkConnection();
+    void onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString);
+    void onNetworkConnectionChanged();
 
 private:
     void calculateInverseKinematics(double x, double y, double z);
     void sendServoCommand(const QString &data);
     void setAngles(int base, int shoulder, int elbow, int wrist);
 
-    QNetworkAccessManager *m_networkManager;
+    NetworkManager *m_networkManager;
     QTimer *m_connectionTimer;
     QString m_serverUrl;
-    bool m_isConnected;
 
     // Target position
     double m_targetX;

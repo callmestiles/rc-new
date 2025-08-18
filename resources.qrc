@@ -1,7 +1,21 @@
 <RCC>
     <qresource prefix="/">
         <file>Main.qml</file>
-        <file>TopographicalMapView.qml</file>
-        <file>KeyboardHandler.qml</file>
+        <file>src/components/StatusBar.qml</file>
+        <file>src/components/StatusIndicator.qml</file>
+        <file>src/components/WASD.qml</file>
+        <file>src/components/ArmControlPanel.qml</file>
+        <file>src/components/MiniMap.qml</file>
+        <file>src/components/TopographicalMapView.qml</file>
+        <file>src/components/SliderControls.qml</file>
+        <file>src/components/FullMap.qml</file>
+        <file>src/components/MapControls.qml</file>
+        <file>src/components/PathStatus.qml</file>
+        <file>src/pages/ControlPage.qml</file>
+        <file>src/pages/MapPage.qml</file>
+        <file>src/components/SpeedSlider.qml</file>
+        <file>src/components/TurnSlider.qml</file>
+        <file>src/components/MotorCommands.qml</file>
+        <file>src/components/StopButton.qml</file>
     </qresource>
 </RCC>

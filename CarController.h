@@ -2,9 +2,8 @@
 #define CARCONTROLLER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QTimer>
+#include "NetworkManager.h"
 
 class CarController : public QObject
 {
@@ -27,7 +26,7 @@ public:
     QString serverUrl() const { return m_serverUrl; }
     int speedDeadZone() const { return m_speedDeadZone; }
     int turnDeadZone() const { return m_turnDeadZone; }
-    bool isConnected() const { return m_isConnected; }
+    bool isConnected() const;
     int leftMotorSpeed() const { return m_leftMotorSpeed; }
     int rightMotorSpeed() const { return m_rightMotorSpeed; }
 
@@ -40,6 +39,7 @@ public:
 
 public slots:
     void sendControlCommand();
+    void stopCar();
     void centerSteering();
     void setSteeringPressed(bool pressed);
     void setSpeedPressed(bool pressed);
@@ -56,19 +56,18 @@ signals:
     void networkError(const QString &error);
 
 private slots:
-    void onNetworkReply();
     void onSteeringCenterTimer();
-    void onConnectionTimeout();
+    void onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString);
+    void onNetworkConnectionChanged();
 
 private:
     void calculateMotorSpeeds(int &leftSpeed, int &rightSpeed);
     void applyDeadZones();
     void updateMotorSpeeds();
 
-    QNetworkAccessManager *m_networkManager;
+    NetworkManager *m_networkManager;
     QTimer *m_steeringCenterTimer;
-    QTimer *m_commandTimer;
-    QTimer *m_connectionTimeoutTimer;
+    QTimer *m_sendDebounceTimer;
 
     int m_speedValue;
     int m_turnValue;
@@ -78,16 +77,13 @@ private:
     int m_speedDeadZone;
     int m_turnDeadZone;
 
-    bool m_isConnected;
     bool m_steeringPressed;
     bool m_speedPressed;
     int m_leftMotorSpeed;
     int m_rightMotorSpeed;
     QString m_lastCommand;
 
-    static const int STEERING_CENTER_TIMEOUT = 500; // ms
-    static const int COMMAND_SEND_INTERVAL = 200;   // ms - Increased to reduce request frequency
-    static const int CONNECTION_TIMEOUT = 3000;     // ms
+    static const int STEERING_CENTER_TIMEOUT = 100; // ms
 };
 
 #endif // CARCONTROLLER_H

@@ -3,10 +3,9 @@
 
 ArmController::ArmController(QObject *parent)
     : QObject(parent)
-    , m_networkManager(new QNetworkAccessManager(this))
+    , m_networkManager(NetworkManager::instance())
     , m_connectionTimer(new QTimer(this))
     , m_serverUrl("http://192.168.4.1/setServo")
-    , m_isConnected(false)
     , m_targetX(20.0)
     , m_targetY(0.0)
     , m_targetZ(15.0)
@@ -15,8 +14,15 @@ ArmController::ArmController(QObject *parent)
     , m_elbowAngle(90)
     , m_wristAngle(90)
 {
-    connect(m_connectionTimer, &QTimer::timeout, this, &ArmController::checkConnection);
-    m_connectionTimer->start(5000); // Check connection every 5 seconds
+    // Connect to network manager signals
+    connect(m_networkManager, &NetworkManager::requestFinished,
+            this, &ArmController::onNetworkRequestFinished);
+    connect(m_networkManager, &NetworkManager::connectionStatusChanged,
+            this, &ArmController::onNetworkConnectionChanged);
+
+    // Setup connection check timer
+    // connect(m_connectionTimer, &QTimer::timeout, this, &ArmController::checkConnection);
+    // m_connectionTimer->start(5000); // Check connection every 5 seconds
 
     // Initialize with home position
     resetToHome();
@@ -28,6 +34,11 @@ void ArmController::setServerUrl(const QString &url)
         m_serverUrl = url;
         emit serverUrlChanged();
     }
+}
+
+bool ArmController::isConnected() const
+{
+    return m_networkManager->isConnected();
 }
 
 void ArmController::setTargetX(double x)
@@ -173,42 +184,35 @@ void ArmController::setAngles(int base, int shoulder, int elbow, int wrist)
 void ArmController::sendServoCommand(const QString &data)
 {
     if (m_serverUrl.isEmpty()) {
-        qDebug() << "Server URL not set";
+        qDebug() << "ArmController: Server URL not set";
         return;
     }
 
-    QNetworkRequest request{QUrl(m_serverUrl)};
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-    QNetworkReply *reply = m_networkManager->post(request, data.toUtf8());
-    connect(reply, &QNetworkReply::finished, this, &ArmController::onNetworkReply);
-
+    m_networkManager->sendPostRequest(m_serverUrl, data.toUtf8(),
+                                      "application/x-www-form-urlencoded", this);
     emit commandSent(data);
 }
 
-void ArmController::onNetworkReply()
-{
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) return;
+// void ArmController::checkConnection()
+// {
+//     // Send a simple command to check connectivity
+//     sendServoCommand("base=" + QString::number(m_baseAngle));
+// }
 
-    if (reply->error() == QNetworkReply::NoError) {
-        if (!m_isConnected) {
-            m_isConnected = true;
-            emit isConnectedChanged();
-        }
-    } else {
-        if (m_isConnected) {
-            m_isConnected = false;
-            emit isConnectedChanged();
-        }
-        emit networkError(reply->errorString());
+void ArmController::onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString)
+{
+    // Only handle our own requests
+    if (requester != this) {
+        return;
     }
 
-    reply->deleteLater();
+    if (!success) {
+        emit networkError(errorString);
+        qDebug() << "ArmController: Network error:" << errorString;
+    }
 }
 
-void ArmController::checkConnection()
+void ArmController::onNetworkConnectionChanged()
 {
-    // Send a simple command to check connectivity
-    sendServoCommand("base=" + QString::number(m_baseAngle));
+    emit isConnectedChanged();
 }

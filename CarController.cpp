@@ -1,15 +1,12 @@
 #include "CarController.h"
-#include <QNetworkRequest>
-#include <QUrl>
 #include <QDebug>
 #include <QtMath>
 
 CarController::CarController(QObject *parent)
     : QObject(parent)
-    , m_networkManager(new QNetworkAccessManager(this))
+    , m_networkManager(NetworkManager::instance())
     , m_steeringCenterTimer(new QTimer(this))
-    , m_commandTimer(new QTimer(this))
-    , m_connectionTimeoutTimer(new QTimer(this))
+    , m_sendDebounceTimer(new QTimer(this))
     , m_speedValue(0)
     , m_turnValue(0)
     , m_processedSpeed(0)
@@ -17,29 +14,31 @@ CarController::CarController(QObject *parent)
     , m_serverUrl("http://192.168.4.1/setSpeed")
     , m_speedDeadZone(10)  // Dead zone for speed slider
     , m_turnDeadZone(5)    // Dead zone for turn slider
-    , m_isConnected(false)
     , m_steeringPressed(false)
     , m_speedPressed(false)
     , m_leftMotorSpeed(0)
     , m_rightMotorSpeed(0)
 {
+    // Connect to network manager signals
+    connect(m_networkManager, &NetworkManager::requestFinished,
+            this, &CarController::onNetworkRequestFinished);
+    connect(m_networkManager, &NetworkManager::connectionStatusChanged,
+            this, &CarController::onNetworkConnectionChanged);
+
     // Setup steering auto-center timer
     m_steeringCenterTimer->setSingleShot(true);
     m_steeringCenterTimer->setInterval(STEERING_CENTER_TIMEOUT);
     connect(m_steeringCenterTimer, &QTimer::timeout, this, &CarController::onSteeringCenterTimer);
 
-    // Setup command sending timer - increased interval to reduce requests
-    m_commandTimer->setInterval(COMMAND_SEND_INTERVAL);
-    connect(m_commandTimer, &QTimer::timeout, this, &CarController::sendControlCommand);
-    m_commandTimer->start();
+    // Setup debounce timer for sending requests
+    m_sendDebounceTimer->setSingleShot(true);
+    m_sendDebounceTimer->setInterval(80); // ~80ms debounce
+    connect(m_sendDebounceTimer, &QTimer::timeout, this, &CarController::sendControlCommand);
+}
 
-    // Setup connection timeout timer
-    m_connectionTimeoutTimer->setSingleShot(true);
-    m_connectionTimeoutTimer->setInterval(CONNECTION_TIMEOUT);
-    connect(m_connectionTimeoutTimer, &QTimer::timeout, this, &CarController::onConnectionTimeout);
-
-    // Connect network manager
-    connect(m_networkManager, &QNetworkAccessManager::finished, this, &CarController::onNetworkReply);
+bool CarController::isConnected() const
+{
+    return m_networkManager->isConnected();
 }
 
 void CarController::setSpeedValue(int speed)
@@ -50,6 +49,8 @@ void CarController::setSpeedValue(int speed)
 
         applyDeadZones();
         updateMotorSpeeds();
+
+        m_sendDebounceTimer->start();
     }
 }
 
@@ -61,6 +62,8 @@ void CarController::setTurnValue(int turn)
 
         applyDeadZones();
         updateMotorSpeeds();
+
+        m_sendDebounceTimer->start();
 
         // Only start auto-center timer if not currently pressed and value is not 0
         if (!m_steeringPressed && turn != 0) {
@@ -167,7 +170,7 @@ void CarController::calculateMotorSpeeds(int &leftSpeed, int &rightSpeed)
         // Normal movement with steering adjustment
         int baseSpeed = m_processedSpeed;
         double turnFactor = static_cast<double>(m_processedTurn) / 50.0;
-        int speedAdjustment = static_cast<int>(qAbs(baseSpeed) * 0.3 * qAbs(turnFactor));
+        int speedAdjustment = static_cast<int>(qAbs(baseSpeed) * 0.8 * qAbs(turnFactor));
 
         if (turnFactor > 0) {
             // Turning right
@@ -201,17 +204,39 @@ void CarController::sendControlCommand()
     if (command != m_lastCommand) {
         m_lastCommand = command;
 
-        QNetworkRequest request{QUrl(m_serverUrl)};
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
-
-        QByteArray data = command.toUtf8();
-        m_networkManager->post(request, data);
-
-        // Start connection timeout timer
-        m_connectionTimeoutTimer->start();
+        m_networkManager->sendPostRequest(m_serverUrl, command.toUtf8(), "text/plain", this);
 
         emit commandSent(command);
-        qDebug() << "Sending command:" << command;
+        qDebug() << "CarController: Sending command:" << command;
+    }
+}
+
+void CarController::stopCar()
+{
+    int leftSpeed = 0;
+    int rightSpeed = 0;
+    int speedValue = 0;
+
+    if(m_speedValue != speedValue){
+        m_speedValue = 0;
+        emit speedValueChanged();
+
+        if (m_leftMotorSpeed != leftSpeed || m_rightMotorSpeed != rightSpeed) {
+            m_leftMotorSpeed = leftSpeed;
+            m_rightMotorSpeed = rightSpeed;
+            emit motorSpeedsChanged();
+        }
+
+        QString command = QString("%1 %2").arg(0).arg(0);
+
+        if (command != m_lastCommand) {
+            m_lastCommand = command;
+
+            m_networkManager->sendPostRequest(m_serverUrl, command.toUtf8(), "text/plain", this);
+
+            emit commandSent(command);
+            qDebug() << "CarController: Sending command:" << command;
+        }
     }
 }
 
@@ -228,40 +253,20 @@ void CarController::onSteeringCenterTimer()
     }
 }
 
-void CarController::onConnectionTimeout()
+void CarController::onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString)
 {
-    // Set connection status to false if no response within timeout
-    if (m_isConnected) {
-        m_isConnected = false;
-        emit connectionStatusChanged();
+    // Only handle our own requests
+    if (requester != this) {
+        return;
+    }
+
+    if (!success) {
+        emit networkError(errorString);
+        qDebug() << "CarController: Network error:" << errorString;
     }
 }
 
-void CarController::onNetworkReply()
+void CarController::onNetworkConnectionChanged()
 {
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) return;
-
-    // Stop connection timeout timer since we got a response
-    m_connectionTimeoutTimer->stop();
-
-    if (reply->error() != QNetworkReply::NoError) {
-        QString errorString = QString("Network error: %1").arg(reply->errorString());
-        emit networkError(errorString);
-        qWarning() << errorString;
-
-        // Set connection status to false on error
-        if (m_isConnected) {
-            m_isConnected = false;
-            emit connectionStatusChanged();
-        }
-    } else {
-        // Successful response - set connection status to true
-        if (!m_isConnected) {
-            m_isConnected = true;
-            emit connectionStatusChanged();
-        }
-    }
-
-    reply->deleteLater();
+    emit connectionStatusChanged();
 }
