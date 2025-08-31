@@ -9,7 +9,6 @@ Rectangle {
     width: 160
     height: 110
     color: "white"
-    // opacity: 0.5
     radius: 5
     border.color: "grey"
 

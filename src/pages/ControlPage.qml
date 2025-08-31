@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import CarController
-import ArmController
 import "../components"
 
 Page {
@@ -22,18 +20,6 @@ Page {
 
     function getHorizontalSliderValue() {
         return horizontalSlider.value
-    }
-
-    CarController {
-        id: carController
-        serverUrl: "http://192.168.4.1/setSpeed"
-        speedDeadZone: 10
-        turnDeadZone: 5
-    }
-
-    ArmController {
-        id: armController
-        serverUrl: "http://192.168.4.1/setServo"
     }
 
     ColumnLayout {
@@ -60,10 +46,10 @@ Page {
                         anchors.fill: parent
 
                         // ARM CONTROL PANEL - CENTERED
-                        // ArmControlPanel {}
+                        ArmControlPanel {}
 
                         //MiniMap
-                        MiniMap {}
+                        // MiniMap {}
                     }
                 }
 

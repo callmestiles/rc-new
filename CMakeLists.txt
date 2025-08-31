@@ -4,7 +4,7 @@ project(RC_GUI_NEW VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick SerialPort)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -58,7 +58,7 @@ set_target_properties(appRC_GUI_NEW PROPERTIES
 )
 
 target_link_libraries(appRC_GUI_NEW
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::SerialPort
 )
 
 include(GNUInstallDirs)

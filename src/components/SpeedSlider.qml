@@ -13,27 +13,34 @@ Slider {
     width: 30
     from: -255
     to: 255
-    value: 0
 
-    // Behavior on value {
-    //     NumberAnimation {
-    //         duration: 2000
-    //         easing.type: Easing.OutQuad
-    //     }
-    // }
+    Component.onCompleted: {
+        // Initialize the slider with the current car controller value
+        value = carController.speedValue
+    }
 
-    onValueChanged: {
+    // Listen to changes from the CarController (hardware updates)
+    Connections {
+        target: carController
+        function onSpeedValueChanged() {
+            // Only update the slider if the user isn't currently interacting with it
+            if (!verticalSlider.pressed) {
+                console.log("Updating slider from hardware:", carController.speedValue)
+                verticalSlider.value = carController.speedValue
+            }
+        }
+    }
+
+    onMoved: {
+        // Use onMoved instead of onValueChanged to only respond to user interaction
         carController.speedValue = Math.round(value)
     }
 
     onPressedChanged: {
         carController.setSpeedPressed(pressed)
-    }
-
-    Connections {
-        target: carController
-        function onSpeedValueChanged(){
-            verticalSlider.value = carController.speedValue
+        if (!pressed) {
+            // When user releases, make sure we're in sync
+            carController.speedValue = Math.round(value)
         }
     }
 

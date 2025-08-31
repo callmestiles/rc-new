@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
 #include "NetworkManager.h"
 
 class CarController : public QObject
@@ -13,7 +15,7 @@ class CarController : public QObject
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY serverUrlChanged)
     Q_PROPERTY(int speedDeadZone READ speedDeadZone WRITE setSpeedDeadZone NOTIFY speedDeadZoneChanged)
     Q_PROPERTY(int turnDeadZone READ turnDeadZone WRITE setTurnDeadZone NOTIFY turnDeadZoneChanged)
-    Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
+    // Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
     Q_PROPERTY(int leftMotorSpeed READ leftMotorSpeed NOTIFY motorSpeedsChanged)
     Q_PROPERTY(int rightMotorSpeed READ rightMotorSpeed NOTIFY motorSpeedsChanged)
 
@@ -26,7 +28,7 @@ public:
     QString serverUrl() const { return m_serverUrl; }
     int speedDeadZone() const { return m_speedDeadZone; }
     int turnDeadZone() const { return m_turnDeadZone; }
-    bool isConnected() const;
+    // bool isConnected() const;
     int leftMotorSpeed() const { return m_leftMotorSpeed; }
     int rightMotorSpeed() const { return m_rightMotorSpeed; }
 
@@ -43,6 +45,7 @@ public slots:
     void centerSteering();
     void setSteeringPressed(bool pressed);
     void setSpeedPressed(bool pressed);
+    void initSerialPort();
 
 signals:
     void speedValueChanged();
@@ -59,6 +62,7 @@ private slots:
     void onSteeringCenterTimer();
     void onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString);
     void onNetworkConnectionChanged();
+    void readSerialData();
 
 private:
     void calculateMotorSpeeds(int &leftSpeed, int &rightSpeed);
@@ -82,6 +86,12 @@ private:
     int m_leftMotorSpeed;
     int m_rightMotorSpeed;
     QString m_lastCommand;
+
+    QSerialPort *m_serialPort;
+
+    bool m_ignoreHardwareInput;
+    bool m_emergencyStopActive;
+    bool m_hardwareControlActive;
 
     static const int STEERING_CENTER_TIMEOUT = 100; // ms
 };

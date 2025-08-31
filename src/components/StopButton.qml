@@ -11,7 +11,6 @@ Rectangle {
     height: 100
     radius: width / 2
     color: "red"
-
     border.color: "black"
     border.width: 2
 

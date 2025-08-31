@@ -1,6 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+
+#include <NetworkManager.h>
 #include <PathfindingEngine.h>
 #include <CarController.h>
 #include <ArmController.h>
@@ -19,6 +21,7 @@ int main(int argc, char *argv[])
     CarController carController;
     ArmController armController;
 
+    engine.rootContext()->setContextProperty("networkManager", NetworkManager::instance());
     engine.rootContext()->setContextProperty("pathfindingEngine", &pathfindingEngine);
     engine.rootContext()->setContextProperty("carController", &carController);
     engine.rootContext()->setContextProperty("armController", &armController);

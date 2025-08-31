@@ -14,8 +14,8 @@ RowLayout {
 
     //StatusIndicator goes here
     StatusIndicator {
-        label: carController.isConnected ? "Car Connected" : "Car Disconnected"
-        labelColor: carController.isConnected ? "green" : "red"
-        circleColor: carController.isConnected ? "green" : "red"
+        label: networkManager.isConnected ? "Car Connected" : "Car Disconnected"
+        labelColor: networkManager.isConnected ? "green" : "red"
+        circleColor: networkManager.isConnected ? "green" : "red"
     }
 }

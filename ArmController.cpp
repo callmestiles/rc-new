@@ -4,28 +4,67 @@
 ArmController::ArmController(QObject *parent)
     : QObject(parent)
     , m_networkManager(NetworkManager::instance())
-    , m_connectionTimer(new QTimer(this))
-    , m_serverUrl("http://192.168.4.1/setServo")
-    , m_targetX(20.0)
-    , m_targetY(0.0)
-    , m_targetZ(15.0)
-    , m_baseAngle(90)
+    , m_commandTimer(new QTimer(this))
+    , m_baseAngle(90)        // Default to middle position
     , m_shoulderAngle(90)
     , m_elbowAngle(90)
     , m_wristAngle(90)
+    , m_gripperAngle(90)
+    , m_serverUrl("http://192.168.4.1/setServo")
 {
     // Connect to network manager signals
     connect(m_networkManager, &NetworkManager::requestFinished,
             this, &ArmController::onNetworkRequestFinished);
-    connect(m_networkManager, &NetworkManager::connectionStatusChanged,
-            this, &ArmController::onNetworkConnectionChanged);
 
-    // Setup connection check timer
-    // connect(m_connectionTimer, &QTimer::timeout, this, &ArmController::checkConnection);
-    // m_connectionTimer->start(5000); // Check connection every 5 seconds
+    // Setup command batching timer
+    m_commandTimer->setSingleShot(true);
+    m_commandTimer->setInterval(COMMAND_BATCH_TIMEOUT);
+    connect(m_commandTimer, &QTimer::timeout, this, &ArmController::sendPendingCommands);
+}
 
-    // Initialize with home position
-    resetToHome();
+void ArmController::setBaseAngle(int angle)
+{
+    if (isValidAngle(angle) && m_baseAngle != angle) {
+        m_baseAngle = angle;
+        emit baseAngleChanged();
+        queueServoCommand("base", angle);
+    }
+}
+
+void ArmController::setShoulderAngle(int angle)
+{
+    if (isValidAngle(angle) && m_shoulderAngle != angle) {
+        m_shoulderAngle = angle;
+        emit shoulderAngleChanged();
+        queueServoCommand("shoulder", angle);
+    }
+}
+
+void ArmController::setElbowAngle(int angle)
+{
+    if (isValidAngle(angle) && m_elbowAngle != angle) {
+        m_elbowAngle = angle;
+        emit elbowAngleChanged();
+        queueServoCommand("elbow", angle);
+    }
+}
+
+void ArmController::setWristAngle(int angle)
+{
+    if (isValidAngle(angle) && m_wristAngle != angle) {
+        m_wristAngle = angle;
+        emit wristAngleChanged();
+        queueServoCommand("wrist", angle);
+    }
+}
+
+void ArmController::setGripperAngle(int angle)
+{
+    if (isValidAngle(angle) && m_gripperAngle != angle) {
+        m_gripperAngle = angle;
+        emit gripperAngleChanged();
+        queueServoCommand("gripper", angle);
+    }
 }
 
 void ArmController::setServerUrl(const QString &url)
@@ -36,168 +75,129 @@ void ArmController::setServerUrl(const QString &url)
     }
 }
 
-bool ArmController::isConnected() const
+void ArmController::moveBase(int angle)
 {
-    return m_networkManager->isConnected();
-}
+    if (isValidAngle(angle)) {
+        QString command = QString("base=%1").arg(angle);
+        sendServoCommand(command);
 
-void ArmController::setTargetX(double x)
-{
-    if (qAbs(m_targetX - x) > 0.1) {
-        m_targetX = x;
-        emit targetXChanged();
-        calculateInverseKinematics(m_targetX, m_targetY, m_targetZ);
-    }
-}
-
-void ArmController::setTargetY(double y)
-{
-    if (qAbs(m_targetY - y) > 0.1) {
-        m_targetY = y;
-        emit targetYChanged();
-        calculateInverseKinematics(m_targetX, m_targetY, m_targetZ);
-    }
-}
-
-void ArmController::setTargetZ(double z)
-{
-    if (qAbs(m_targetZ - z) > 0.1) {
-        m_targetZ = z;
-        emit targetZChanged();
-        calculateInverseKinematics(m_targetX, m_targetY, m_targetZ);
-    }
-}
-
-void ArmController::moveToPosition(double x, double y, double z)
-{
-    m_targetX = x;
-    m_targetY = y;
-    m_targetZ = z;
-
-    emit targetXChanged();
-    emit targetYChanged();
-    emit targetZChanged();
-
-    calculateInverseKinematics(x, y, z);
-}
-
-void ArmController::setIndividualServo(const QString &servo, int angle)
-{
-    QString command = QString("%1=%2").arg(servo).arg(angle);
-    sendServoCommand(command);
-
-    // Update internal state
-    if (servo == "base") {
+        // Update internal state
         m_baseAngle = angle;
         emit baseAngleChanged();
-    } else if (servo == "shoulder") {
+    }
+}
+
+void ArmController::moveShoulder(int angle)
+{
+    if (isValidAngle(angle)) {
+        QString command = QString("shoulder=%1").arg(angle);
+        sendServoCommand(command);
+
+        // Update internal state
         m_shoulderAngle = angle;
         emit shoulderAngleChanged();
-    } else if (servo == "elbow") {
+    }
+}
+
+void ArmController::moveElbow(int angle)
+{
+    if (isValidAngle(angle)) {
+        QString command = QString("elbow=%1").arg(angle);
+        sendServoCommand(command);
+
+        // Update internal state
         m_elbowAngle = angle;
         emit elbowAngleChanged();
-    } else if (servo == "wrist") {
+    }
+}
+
+void ArmController::moveWrist(int angle)
+{
+    if (isValidAngle(angle)) {
+        QString command = QString("wrist=%1").arg(angle);
+        sendServoCommand(command);
+
+        // Update internal state
         m_wristAngle = angle;
         emit wristAngleChanged();
     }
 }
 
-void ArmController::resetToHome()
+void ArmController::moveGripper(int angle)
 {
-    setAngles(90, 90, 90, 90);
-    m_targetX = SHOULDER_LENGTH + ELBOW_LENGTH * qCos(qDegreesToRadians(90.0));
-    m_targetY = 0.0;
-    m_targetZ = ELBOW_LENGTH * qSin(qDegreesToRadians(90.0));
+    if (isValidAngle(angle)) {
+        QString command = QString("gripper=%1").arg(angle);
+        sendServoCommand(command);
 
-    emit targetXChanged();
-    emit targetYChanged();
-    emit targetZChanged();
+        // Update internal state
+        m_gripperAngle = angle;
+        emit gripperAngleChanged();
+    }
 }
 
-void ArmController::calculateInverseKinematics(double x, double y, double z)
+void ArmController::moveMultipleServos(const QVariantMap &servos)
 {
-    // Base angle (rotation around vertical axis)
-    double baseAngle = qRadiansToDegrees(qAtan2(y, x));
+    QStringList commandParts;
 
-    // Project to 2D problem in the arm plane
-    double r = qSqrt(x * x + y * y);
-    double reach = qSqrt(r * r + z * z);
+    for (auto it = servos.begin(); it != servos.end(); ++it) {
+        QString servo = it.key().toLower();
+        int angle = it.value().toInt();
 
-    // Check if target is reachable
-    double maxReach = SHOULDER_LENGTH + ELBOW_LENGTH;
-    double minReach = qAbs(SHOULDER_LENGTH - ELBOW_LENGTH);
+        if (isValidAngle(angle)) {
+            commandParts << QString("%1=%2").arg(servo).arg(angle);
 
-    if (reach > maxReach || reach < minReach) {
-        qDebug() << "Target position unreachable:" << x << y << z;
-        return;
+            // Update internal state
+            if (servo == "base") {
+                m_baseAngle = angle;
+                emit baseAngleChanged();
+            } else if (servo == "shoulder") {
+                m_shoulderAngle = angle;
+                emit shoulderAngleChanged();
+            } else if (servo == "elbow") {
+                m_elbowAngle = angle;
+                emit elbowAngleChanged();
+            } else if (servo == "wrist") {
+                m_wristAngle = angle;
+                emit wristAngleChanged();
+            } else if (servo == "gripper") {
+                m_gripperAngle = angle;
+                emit gripperAngleChanged();
+            }
+        }
     }
 
-    // Calculate shoulder and elbow angles using law of cosines
-    double cosElbow = (SHOULDER_LENGTH * SHOULDER_LENGTH + ELBOW_LENGTH * ELBOW_LENGTH - reach * reach) /
-                      (2 * SHOULDER_LENGTH * ELBOW_LENGTH);
-
-    // Clamp to valid range
-    cosElbow = qBound(-1.0, cosElbow, 1.0);
-
-    double elbowAngle = qRadiansToDegrees(qAcos(cosElbow));
-
-    double alpha = qAtan2(z, r);
-    double beta = qAcos((SHOULDER_LENGTH * SHOULDER_LENGTH + reach * reach - ELBOW_LENGTH * ELBOW_LENGTH) /
-                        (2 * SHOULDER_LENGTH * reach));
-
-    double shoulderAngle = qRadiansToDegrees(alpha + beta);
-
-    // Calculate wrist angle to keep end effector level (adjust as needed)
-    double wristAngle = 180 - shoulderAngle - elbowAngle;
-
-    // Convert to servo angles and apply constraints
-    int base = qBound(BASE_MIN, static_cast<int>(baseAngle + 90), BASE_MAX);
-    int shoulder = qBound(SHOULDER_MIN, static_cast<int>(shoulderAngle), SHOULDER_MAX);
-    int elbow = qBound(ELBOW_MIN, static_cast<int>(elbowAngle), ELBOW_MAX);
-    int wrist = qBound(WRIST_MIN, static_cast<int>(wristAngle), WRIST_MAX);
-
-    setAngles(base, shoulder, elbow, wrist);
-}
-
-void ArmController::setAngles(int base, int shoulder, int elbow, int wrist)
-{
-    if (base != m_baseAngle || shoulder != m_shoulderAngle ||
-        elbow != m_elbowAngle || wrist != m_wristAngle) {
-
-        m_baseAngle = base;
-        m_shoulderAngle = shoulder;
-        m_elbowAngle = elbow;
-        m_wristAngle = wrist;
-
-        emit baseAngleChanged();
-        emit shoulderAngleChanged();
-        emit elbowAngleChanged();
-        emit wristAngleChanged();
-
-        // Send command to servos
-        QString command = QString("base=%1&shoulder=%2&elbow=%3&wrist=%4")
-                              .arg(base).arg(shoulder).arg(elbow).arg(wrist);
+    if (!commandParts.isEmpty()) {
+        QString command = commandParts.join("&");
         sendServoCommand(command);
     }
 }
 
-void ArmController::sendServoCommand(const QString &data)
+void ArmController::moveAllServos(int base, int shoulder, int elbow, int wrist, int gripper)
 {
-    if (m_serverUrl.isEmpty()) {
-        qDebug() << "ArmController: Server URL not set";
-        return;
-    }
+    QVariantMap servos;
+    servos["base"] = base;
+    servos["shoulder"] = shoulder;
+    servos["elbow"] = elbow;
+    servos["wrist"] = wrist;
+    servos["gripper"] = gripper;
 
-    m_networkManager->sendPostRequest(m_serverUrl, data.toUtf8(),
-                                      "application/x-www-form-urlencoded", this);
-    emit commandSent(data);
+    moveMultipleServos(servos);
 }
 
-// void ArmController::checkConnection()
-// {
-//     // Send a simple command to check connectivity
-//     sendServoCommand("base=" + QString::number(m_baseAngle));
-// }
+void ArmController::resetArmToDefault()
+{
+    moveAllServos(90, 90, 90, 90, 90);
+}
+
+void ArmController::openGripper()
+{
+    moveGripper(180); // Assuming 180 is open
+}
+
+void ArmController::closeGripper()
+{
+    moveGripper(0); // Assuming 0 is closed
+}
 
 void ArmController::onNetworkRequestFinished(QObject *requester, bool success, const QString &errorString)
 {
@@ -209,10 +209,57 @@ void ArmController::onNetworkRequestFinished(QObject *requester, bool success, c
     if (!success) {
         emit networkError(errorString);
         qDebug() << "ArmController: Network error:" << errorString;
+    } else {
+        qDebug() << "ArmController: Servo command sent successfully";
     }
 }
 
-void ArmController::onNetworkConnectionChanged()
+void ArmController::sendPendingCommands()
 {
-    emit isConnectedChanged();
+    if (m_pendingCommands.isEmpty()) {
+        return;
+    }
+
+    // Combine all pending commands into one request
+    QString command = m_pendingCommands.join("&");
+    m_pendingCommands.clear();
+
+    sendServoCommand(command);
+}
+
+bool ArmController::isValidAngle(int angle) const
+{
+    return angle >= MIN_SERVO_ANGLE && angle <= MAX_SERVO_ANGLE;
+}
+
+void ArmController::queueServoCommand(const QString &servo, int angle)
+{
+    // Remove any existing command for this servo
+    for (int i = m_pendingCommands.size() - 1; i >= 0; --i) {
+        if (m_pendingCommands[i].startsWith(servo + "=")) {
+            m_pendingCommands.removeAt(i);
+        }
+    }
+
+    // Add new command
+    m_pendingCommands << QString("%1=%2").arg(servo).arg(angle);
+
+    // Start/restart timer
+    m_commandTimer->start();
+}
+
+void ArmController::sendServoCommand(const QString &command)
+{
+    if (command.isEmpty() || command == m_lastCommand) {
+        return;
+    }
+
+    m_lastCommand = command;
+
+    qDebug() << "ArmController: Sending servo command:" << command;
+
+    m_networkManager->sendPostRequest(m_serverUrl, command.toUtf8(),
+                                      "application/x-www-form-urlencoded", this);
+
+    emit commandSent(command);
 }

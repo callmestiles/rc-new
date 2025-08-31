@@ -31,6 +31,7 @@ signals:
 private slots:
     void onNetworkReply();
     void onConnectionTimeout();
+    void handleReplyFinished(QNetworkReply* reply);
 
 private:
     explicit NetworkManager(QObject *parent = nullptr);
@@ -50,7 +51,7 @@ private:
     // Track pending requests and their requesters
     QHash<QNetworkReply*, QObject*> m_pendingRequests;
 
-    static const int CONNECTION_TIMEOUT = 3000; // ms
+    static const int CONNECTION_TIMEOUT = 5000; // ms - increased from 3000 to 5000 for better reliability
 };
 
 #endif // NETWORKMANAGER_H
