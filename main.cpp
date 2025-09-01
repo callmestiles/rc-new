@@ -6,6 +6,7 @@
 #include <PathfindingEngine.h>
 #include <CarController.h>
 #include <ArmController.h>
+#include "MjpegStreamer.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,6 +15,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<PathfindingEngine>("PathfindingEngine", 1, 0, "PathfindingEngine");
     qmlRegisterType<CarController>("CarController", 1, 0, "CarController");
     qmlRegisterType<ArmController>("ArmController", 1, 0, "ArmController");
+    qmlRegisterType<MjpegStreamer>("CameraStream", 1, 0, "MjpegStreamer");
 
     QQmlApplicationEngine engine;
 
@@ -25,6 +27,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("pathfindingEngine", &pathfindingEngine);
     engine.rootContext()->setContextProperty("carController", &carController);
     engine.rootContext()->setContextProperty("armController", &armController);
+    // Register the image provider
+    engine.addImageProvider("stream", MjpegStreamer::getImageProvider());
 
     const QUrl url(QStringLiteral("qrc:/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

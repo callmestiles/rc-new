@@ -19,6 +19,8 @@ qt_add_executable(appRC_GUI_NEW
     ArmController.cpp
     NetworkManager.h
     NetworkManager.cpp
+    MjpegStreamer.h
+    MjpegStreamer.cpp
     main.cpp
     ${resources}
 )
@@ -42,6 +44,7 @@ qt_add_qml_module(appRC_GUI_NEW
         src/components/TurnSlider.qml
         src/components/MotorCommands.qml
         src/components/StopButton.qml
+        src/components/CameraStream.qml
         src/pages/ControlPage.qml
         src/pages/MapPage.qml
 )

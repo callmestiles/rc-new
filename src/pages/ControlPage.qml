@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtMultimedia
+
 import "../components"
 
 Page {
@@ -48,8 +50,36 @@ Page {
                         // ARM CONTROL PANEL - CENTERED
                         ArmControlPanel {}
 
-                        //MiniMap
-                        // MiniMap {}
+
+                        CameraStream {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            streamUrl: "http://192.168.4.1/stream"
+                            autoConnect: true
+                            showControls: true
+                            showStatus: true
+
+                            onFrameReceived: function(pixmap) {
+                                console.log("New frame received for processing")
+                                // Process frame for object detection here
+                                // processFrameForObjectDetection(pixmap)
+                            }
+
+                            onConnectionChanged: function(connected) {
+                                if (connected) {
+                                    console.log("Camera connected successfully")
+                                } else {
+                                    console.log("Camera disconnected")
+                                }
+                            }
+
+                            onErrorOccurred: function(error) {
+                                console.log("Camera error:", error)
+                                // Show error dialog or notification
+                            }
+                        }
+
                     }
                 }
 

@@ -17,5 +17,6 @@
         <file>src/components/TurnSlider.qml</file>
         <file>src/components/MotorCommands.qml</file>
         <file>src/components/StopButton.qml</file>
+        <file>src/components/CameraStream.qml</file>
     </qresource>
 </RCC>
